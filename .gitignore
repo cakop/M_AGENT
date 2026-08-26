@@ -1,0 +1,22 @@
+# Python 虚拟环境
+venv/
+venv312/
+.env
+
+# IDE 配置 (PyCharm)
+.idea/
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 会话存档（含对话历史，不应提交）
+src/agent/sessions/
+
+# 临时测试脚本
+src/agent/temp.py
+
+.pytest_cache/
+*.pyc
+
+test/
