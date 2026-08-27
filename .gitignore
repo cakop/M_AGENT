@@ -20,3 +20,6 @@ src/agent/temp.py
 *.pyc
 
 test/
+
+_diff*.txt
+_s.txt

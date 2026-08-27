@@ -134,16 +134,19 @@ def main():
         #  转成 LangChain 消息喂图（user 已在 history 里，不用再拼）
         lc_history = [m for m in (dict_to_msg(x) for x in history) if m is not None]
         # 收集本轮所有 chunk，拼成完整消息
+
         reply_chunks = []
         streaming = False
         for msg_chunk, metadata in app.stream({"messages": lc_history}, stream_mode="messages"):
             node = metadata.get("langgraph_node")
-            if not isinstance(msg_chunk, BaseMessage):
+            if type(msg_chunk).__name__ not in ("AIMessageChunk", "ToolMessage", "AIMessage", "ToolMessageChunk"):
                 continue
             if node == "call_model":
-                console.print(msg_chunk.content, end="", style="bold green")
-                streaming = True
-                if reply_chunks and reply_chunks[-1].type == msg_chunk.type:
+                if msg_chunk.content:
+                    console.print(msg_chunk.content, end="", style="bold green")
+                    streaming = True
+                # 合并：只有同类型才 +=（AIMessageChunk 可以安全相加）
+                if reply_chunks and type(reply_chunks[-1]).__name__ == type(msg_chunk).__name__:
                     reply_chunks[-1] += msg_chunk
                 else:
                     reply_chunks.append(msg_chunk)
@@ -152,14 +155,11 @@ def main():
                     console.print("\n")
                     streaming = False
                 console.print(f"[dim] {msg_chunk.content[:200]}[/dim]")
-                if reply_chunks and reply_chunks[-1].type == msg_chunk.type:
+                if reply_chunks and type(reply_chunks[-1]).__name__ == type(msg_chunk).__name__:
                     reply_chunks[-1] += msg_chunk
                 else:
                     reply_chunks.append(msg_chunk)
         console.print("\n")
-
-        for m in reply_chunks:
-            history.append(msg_to_dict(m))
 
 
 

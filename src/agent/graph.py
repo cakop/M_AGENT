@@ -3,7 +3,7 @@ from langchain_core.messages import ToolMessage
 from concurrent.futures import ThreadPoolExecutor
 load_dotenv(override=True)
 from langchain_deepseek import ChatDeepSeek
-from src.agent.tools import read_file,execute_command,edit_file,plan_task,list_dir,grep_code,glob_file
+from src.agent.tools import read_file,execute_command,edit_file,plan_task,list_dir,grep_code,glob_file,load_skill
 from src.agent.safety import decide
 from typing import TypedDict
 from typing import Annotated
@@ -43,7 +43,12 @@ SYSTEM_PROMPT = """\
 4. plan_task：复杂任务先派规划子 Agent 出方案，确认后再执行。
 5. list_dir：探查目录结构（不要猜文件名，先 list_dir 再看）。
 6. grep_code：在目录中搜索文本。
-7. glob_files：按文件名模式查找文件（*.py、test*.txt）
+7. glob_files：按文件名模式查找文件（*.py、test*.txt）。
+8. load_skill：加载专业技能。可用技能：
+   - commit（写规范的 git commit message）
+   - review（代码评审：逻辑/边界/命名/安全）
+   - test（编写 pytest 单元测试）
+   当任务匹配某个技能时，先调用 load_skill 加载规范，再执行。
 
 ## 工作目录边界
 - 你的工作目录是 D:\\Agent_Test。只能读取和修改这个目录内的文件。
@@ -83,7 +88,8 @@ def call_model(state: State) -> dict:
                                                   convert_to_openai_tool(plan_task),
                                                   convert_to_openai_tool(list_dir),
                                                   convert_to_openai_tool(grep_code),
-                                                  convert_to_openai_tool(glob_file)
+                                                  convert_to_openai_tool(glob_file),
+                                                  convert_to_openai_tool(load_skill)
                                                   ])
 
     return {"messages": [response]}
@@ -127,7 +133,8 @@ def tools(state: State)->dict:
         "plan_task": plan_task,
         "list_dir": list_dir,
         "grep_code": grep_code,
-        "glob_file": glob_file
+        "glob_file": glob_file,
+        "load_skill": load_skill
     }
 
     def run_one(tc):

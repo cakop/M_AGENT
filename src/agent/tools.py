@@ -4,6 +4,8 @@ import  os
 import fnmatch
 # 工作根目录：模型只能访问这个目录内的文件
 WORK_DIR = r"D:\Agent_Test"
+#存放skill
+SKILLS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "skills")
 
 class ReadFileArgs(BaseModel): # ← 自己定义 schema
     """读取文件参数"""
@@ -42,7 +44,9 @@ class GlobArgs(BaseModel):
     pattern: str = Field(description="文件名模式，如 *.py、test*.txt、*config*")
     path: str = Field(default=".", description="在哪个目录下查找")
 
-
+class LoadSkillArgs(BaseModel):
+    """加载技能参数"""
+    name: str = Field(description="技能名称，如 commit")
 
 @tool(args_schema=ReadFileArgs, description="读取文件内容（只读）。支持分段读取：offset 指定起始行，limit 指定行数。")
 def read_file(file_path: str,offset: int = 1, limit: int = 500,**kwargs)-> str :
@@ -103,7 +107,7 @@ def execute_command(command: str)-> str:
     """在终端执行 shell 命令并返回输出（如 ls、git、python 等）"""
     import subprocess #让 Python 代码去跑「操作系统的命令」，相当于在 cmd /powershell/ 终端敲命令
     try:
-        result = subprocess.run(command, shell=True, capture_output=True, text=True,timeout=30)
+        result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30, encoding="utf-8", errors="ignore")
         # 捕获stdout标准输出、stderr错误输出，不打印到控制台 最多运行30秒，防止卡死死循环命令
         output=result.stdout
         # 如果有错误输出，把stderr也拼到结果里
@@ -179,7 +183,6 @@ def grep_code(pattern: str,path: str=".")-> str:
         # 原地过滤：遍历文件夹时，不要进入下面这些文件夹 dirs[:]原地修改列表，告诉 os.walk 不要进入黑名单文件夹
         dirs[:] = [d for d in dirs if d not in ("__pycache__", ".git", "venv", "venv312", "sessions")]
         for f in files:
-            print(f"[DEBUG] 正在检查: {os.path.join(root, f)}")
             if not f.endswith((".py",".js",".ts",".tsx",".md",".html",".css",".json",".yml",".yaml",".txt")):
                  continue
             fp = os.path.join(root, f)
@@ -213,5 +216,16 @@ def glob_file(pattern: str, path: str = ".") -> str:
     if len(results) > 50:
         output += f"\n...（共 {len(results)} 个，只显示前 50 个）"
     return output
+
+@tool(args_schema=LoadSkillArgs, description="加载一个技能到当前上下文。可用技能：commit（写规范的 git commit message）。")
+def load_skill(name:str)-> str:
+    """加载 skill 文件内容。"""
+    path=os.path.join(SKILLS_DIR,name+".md")
+    if not os.path.exists(path):
+        return f"技能 {name} 不存在"
+    if not is_within_workdir(path):
+        return f"错误：只能访问工作目录内的文件"
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
 
 
